@@ -1,0 +1,77 @@
+port: 7890
+socks-port: 7891
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+dns:
+  enable: true
+  listen: 0.0.0.0:53
+  nameserver:
+    - 119.29.29.29
+    - 223.5.5.5
+  fake-ip-range: 198.18.0.1/16
+
+proxy-providers:
+  jichang-dingyue1:   #名称，默认即可
+    type: http
+    url: "your-jichangdingyue-url"  ###此处必填，url里面填入你的机场订阅链接，一般订阅链接加密了，需要转换为直链(https://acl4ssr-sub.github.io/)
+    interval: 3600
+    path: ./jichang1.yaml   #机场订阅文件下载后的文件名及文件地址，默认即可
+    health-check:
+      enable: true
+      interval: 600
+      url: https://www.gstatic.com/generate_204
+
+proxies:
+###你的自建节点都在 proxies 里添加，这里我帖的一个socks5默认配置
+#你可以添加你自建的trojan vmess等，格式参考官网：https://dreamacro.github.io/clash/configuration/configuration-reference.html
+  # - name: "mysocks5"
+  #   type: socks5
+  #   server: ip/domain
+  #   port: 443
+  #   username: username
+  #   password: password
+  #   tls: false
+  #   skip-cert-verify: true
+  #   # udp: true
+
+
+proxy-groups:
+  - name: 手动选择
+    type: select
+    # disable-udp: true
+    # filter: 'someregex'
+    proxies:
+      - jichang2zijian    #链式代理名字 需要和下方name一样，默认即可，"此为目标节点"
+      - 自动选择    #避免无法上网留的后手
+
+  - name: 自动选择
+    type: url-test
+    use:
+      - jichang-dingyue1    #proxy-providers中的名字，默认即可
+    url: "http://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+
+  - name: jichang2zijian    #链式代理名字，默认即可
+    type: relay
+    proxies:
+      - 自动选择            #将自动选择的节点作为中转节点，上节这里是一个vmess协议的中转机
+      - mysocks5           #你的自建节点name，可以在proxies添加自己的trojan vmess等节点
+
+
+rules:
+    - 'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve'
+    - 'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve'
+    - 'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve'
+    - 'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve'
+    - 'IP-CIDR,17.0.0.0/8,DIRECT,no-resolve'
+    - 'IP-CIDR,100.64.0.0/10,DIRECT,no-resolve'
+    - 'IP-CIDR,224.0.0.0/4,DIRECT,no-resolve'
+    - 'IP-CIDR6,fe80::/10,DIRECT,no-resolve'
+    - 'MATCH,手动选择'  #所有都走手动选择，这个不要替换
+###为了简洁 rules分流规则我都删去了 这是不对的
+#建议你参考机场的rules规则
+#然后你就会发现机场的proxy-group名字和我的不一样 会产生报错 
+#所以这个配置只能作为参考，主要是学会这种方法 :)
